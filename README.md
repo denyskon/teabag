@@ -2,7 +2,7 @@
 
 This is a lightweight Go server for handling OAuth flows with Gitea, Gitlab, Bitbucket, GitHub.
 
-> Note: My primary use case is providing OAuth between Gitea and NetlifyCMS. Other SCMs are untested as of now.
+> Note: My primary use case is providing OAuth between Gitea and Static CMS. Other SCMs are untested as of now.
 
 ## Setup
 
@@ -64,5 +64,7 @@ callbackUri="http://localhost:3000/callback/gitea"
 
 
 ### Credits
+
+Fork of https://github.com/donskifarrell/scm-oauth-provider
 
 Inspiration taken from https://github.com/igk1972/netlify-cms-oauth-provider-go
