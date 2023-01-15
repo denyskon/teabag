@@ -169,8 +169,9 @@ func main() {
 	// redirect to correct auth/{provider} URL if Auth request is submited with a query param '&provider=X'
 	// TODO: Remove hardcoded http://
 	r.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
+		proto := config.GetString("server.publicProto")
 		host := net.JoinHostPort(config.GetString("server.host"), config.GetString("server.port"))
-		URL := fmt.Sprintf("http://%s/auth/%s", host, r.FormValue("provider"))
+		URL := fmt.Sprintf("%s://%s/auth/%s", proto, host, r.FormValue("provider"))
 
 		log.Infof("redirecting to '%s'\n", URL)
 		http.Redirect(w, r, URL, http.StatusTemporaryRedirect)
