@@ -1,6 +1,6 @@
-LABEL org.opencontainers.image.source = "https://github.com/denyskon/teabag" 
-
 FROM golang:1.19-alpine
+
+LABEL org.opencontainers.image.source = "https://github.com/denyskon/teabag" 
 
 WORKDIR /app
 
