@@ -1,0 +1,17 @@
+version: '2'
+services:
+  teabag:
+    image: ghcr.io/denyskon/teabag
+    restart: always
+    environment:
+      - TEABAG_PORT=3000
+      - TEABAG_SESSION_SECRET=super-secret
+      - TEABAG_GITEA_KEY=<KEY>
+      - TEABAG_GITEA_SECRET=<SECRET>
+      - TEABAG_GITEA_BASE_URL=https://gitea.company.com
+      - TEABAG_GITEA_AUTH_URI=login/oauth/authorize
+      - TEABAG_GITEA_TOKEN_URI=login/oauth/access_token
+      - TEABAG_GITEA_USER_URI=api/v1/user
+      - TEABAG_CALLBACK_URI=http://oauth.example.com:3000/callback
+    ports:
+      - "3000:3000"

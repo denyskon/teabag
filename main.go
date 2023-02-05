@@ -12,17 +12,14 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
-	"github.com/markbates/goth/providers/bitbucket"
 	"github.com/markbates/goth/providers/gitea"
-	"github.com/markbates/goth/providers/github"
-	"github.com/markbates/goth/providers/gitlab"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
 var (
-	serviceName = "oauth-provider"
+	serviceName = "teabag"
 	msgTemplate = `<!DOCTYPE html><html><head></head><body>{{.}}</body></html>`
 	resTemplate = `
 		<!DOCTYPE html><html><head></head><body>
@@ -41,16 +38,24 @@ var (
 
 func initConfig() {
 	config = viper.New()
-	config.SetConfigType("toml")
-	config.SetConfigFile("./env/config")
+	config.SetConfigType("env")
+	config.SetConfigName("teabag")
+	config.AddConfigPath("./env/")
+	config.AddConfigPath("/etc/teabag/")
+	config.SetEnvPrefix("teabag")
 	config.AutomaticEnv()
 
 	if err := config.ReadInConfig(); err != nil {
-		log.Fatalf("error loading configuration: %v", err)
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			log.Infoln("config file not found, falling back to evironment variables")
+		} else {
+			log.Fatalf("error loading configuration: %v", err)
+		}
 	}
+
 }
 
-func initProviders() {
+func initProvider() {
 	var (
 		providers []goth.Provider
 	)
@@ -59,66 +64,34 @@ func initProviders() {
 		key, secret, BaseURL, CallbackURL, AuthURI, AccessTokenURI, UserURI string
 	}
 
-	log.Info("initialising providers")
+	log.Info("initialising provider")
 
 	getProviderSetings := func(name string) settings {
-		baseURL := config.GetString(name + ".baseURL")
+		baseURL := config.GetString(name + "_base_url")
 		return settings{
-			key:            config.GetString(name + ".key"),
-			secret:         config.GetString(name + ".secret"),
+			key:            config.GetString(name + "_key"),
+			secret:         config.GetString(name + "_secret"),
 			BaseURL:        baseURL,
-			AuthURI:        fmt.Sprintf("%s/%s", baseURL, config.GetString(name+".authURI")),
-			AccessTokenURI: fmt.Sprintf("%s/%s", baseURL, config.GetString(name+".accessTokenURI")),
-			UserURI:        fmt.Sprintf("%s/%s", baseURL, config.GetString(name+".userURI")),
-			CallbackURL:    config.GetString(name + ".callbackURI"),
+			AuthURI:        fmt.Sprintf("%s/%s", baseURL, config.GetString(name+"_auth_uri")),
+			AccessTokenURI: fmt.Sprintf("%s/%s", baseURL, config.GetString(name+"_token_uri")),
+			UserURI:        fmt.Sprintf("%s/%s", baseURL, config.GetString(name+"_user_uri")),
+			CallbackURL:    config.GetString("callback_uri"),
 		}
 	}
 
-	if config.InConfig("gitea") {
-		log.Info("- adding gitea provider")
-		var p goth.Provider
-		s := getProviderSetings("gitea")
-		if s.AuthURI != "" {
-			out, _ := json.MarshalIndent(s, "", "  ")
-			log.Infof("-- with custom settings %s", string(out))
-			p = gitea.NewCustomisedURL(s.key, s.secret, s.CallbackURL, s.AuthURI, s.AccessTokenURI, s.UserURI)
-		} else {
-			p = gitea.New(s.key, s.secret, s.CallbackURL)
-		}
-		providers = append(providers, p)
+	log.Info("- adding gitea connector")
+	var p goth.Provider
+	s := getProviderSetings("gitea")
+	if s.AuthURI != "" {
+		out, _ := json.MarshalIndent(s, "", "  ")
+		log.Infof("-- with custom settings %s", string(out))
+		p = gitea.NewCustomisedURL(s.key, s.secret, s.CallbackURL, s.AuthURI, s.AccessTokenURI, s.UserURI)
+	} else {
+		p = gitea.New(s.key, s.secret, s.CallbackURL)
 	}
+	providers = append(providers, p)
 
-	if config.InConfig("gitlab") {
-		log.Info("- adding gitlab provider")
-		var p goth.Provider
-		s := getProviderSetings("gitlab")
-		if s.AuthURI != "" {
-			out, _ := json.MarshalIndent(s, "", "  ")
-			log.Infof("-- with custom settings %s", string(out))
-			p = gitlab.NewCustomisedURL(s.key, s.secret, s.CallbackURL, s.AuthURI, s.AccessTokenURI, s.UserURI)
-		} else {
-			p = gitlab.New(s.key, s.secret, s.CallbackURL)
-		}
-		providers = append(providers, p)
-	}
-
-	if config.InConfig("github") {
-		log.Info("- adding github provider")
-		var p goth.Provider
-		s := getProviderSetings("github")
-		p = github.New(s.key, s.secret, s.CallbackURL)
-		providers = append(providers, p)
-	}
-
-	if config.InConfig("bitbucket") {
-		log.Info("- adding bitbucket provider")
-		var p goth.Provider
-		s := getProviderSetings("bitbucket")
-		p = bitbucket.New(s.key, s.secret, s.CallbackURL)
-		providers = append(providers, p)
-	}
-
-	gothic.Store = sessions.NewCookieStore([]byte(config.GetString("server.sessionSecret")))
+	gothic.Store = sessions.NewCookieStore([]byte(config.GetString("session_secret")))
 	goth.UseProviders(providers...)
 }
 
@@ -129,7 +102,7 @@ func main() {
 	log.Info("starting up service")
 
 	initConfig()
-	initProviders()
+	initProvider()
 
 	r := mux.NewRouter()
 
@@ -138,48 +111,28 @@ func main() {
 		t.Execute(w, fmt.Sprintf("Connected to %s", serviceName))
 	})
 
-	r.HandleFunc("/callback/{provider}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-
-		provider, err := gothic.GetProviderName(r)
-		if err != nil {
-			log.Errorf("callback: GetProviderName failed %v", err)
-			return
-		}
-
+	r.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		user, err := gothic.CompleteUserAuth(w, r)
 		if err != nil {
 			log.Errorf("callback: CompleteUserAuth failed %v", err)
 			return
 		}
 
-		log.Infof("logged in user to '%s'\n", vars["provider"])
+		log.Infoln("logged in user to gitea")
 		t, _ := template.New("res").Parse(resTemplate)
 
 		data := struct {
 			Provider    string
 			OAuthResult string
 		}{
-			Provider:    fmt.Sprintf(`authorizing:%s`, provider),
-			OAuthResult: fmt.Sprintf(`authorization:%s:%s:{"token":"%s", "provider":"%s"}`, provider, "success", user.AccessToken, user.Provider),
+			Provider:    fmt.Sprintf(`authorizing:gitea`),
+			OAuthResult: fmt.Sprintf(`authorization:gitea:%s:{"token":"%s", "provider":"%s"}`, "success", user.AccessToken, user.Provider),
 		}
 		t.Execute(w, data)
 	}).Methods("GET")
 
-	// redirect to correct auth/{provider} URL if Auth request is submited with a query param '&provider=X'
-	// TODO: Remove hardcoded http://
 	r.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
-		proto := config.GetString("server.publicProto")
-		host := net.JoinHostPort(config.GetString("server.host"), config.GetString("server.port"))
-		URL := fmt.Sprintf("%s://%s/auth/%s", proto, host, r.FormValue("provider"))
-
-		log.Infof("redirecting to '%s'\n", URL)
-		http.Redirect(w, r, URL, http.StatusTemporaryRedirect)
-	}).Methods("GET")
-
-	r.HandleFunc("/auth/{provider}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		log.Infof("handling auth provider request '%s'\n", vars["provider"])
+		log.Infoln("handling auth provider request for gitea")
 
 		if gothUser, err := gothic.CompleteUserAuth(w, r); err == nil {
 			t, _ := template.New("msg").Parse(msgTemplate)
@@ -189,9 +142,8 @@ func main() {
 		}
 	}).Methods("GET")
 
-	r.HandleFunc("/logout/{provider}", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		log.Infof("logout from '%s'\n", vars["provider"])
+	r.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		log.Infoln("logout from gitea")
 
 		gothic.Logout(w, r)
 		w.Header().Set("Location", "/")
@@ -201,13 +153,13 @@ func main() {
 	http.Handle("/", r)
 
 	log.Infof("listening on %s:%d",
-		config.GetString("server.host"),
-		config.GetInt("server.port"),
+		config.GetString("host"),
+		config.GetInt("port"),
 	)
 
 	srv := &http.Server{
 		Handler:      r,
-		Addr:         net.JoinHostPort(config.GetString("server.host"), config.GetString("server.port")),
+		Addr:         net.JoinHostPort(config.GetString("host"), config.GetString("port")),
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}

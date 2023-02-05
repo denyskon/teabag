@@ -1,67 +1,83 @@
-# SCM OAuth Provider 
+# Teabag - Static CMS OAuth Provider for Gitea 
 
-This is a lightweight Go server for handling OAuth flows with Gitea, Gitlab, Bitbucket, GitHub.
-
-> Note: My primary use case is providing OAuth between Gitea and Static CMS. Other SCMs are untested as of now.
+This is a lightweight Go server for handling OAuth flows with Gitea.
 
 ## Setup
+
+### Manual deployment
 
 Open the repo and build the service:
 
 ```
-go build -o oauth-provider .
+go build -o teabag .
 ```
 
 Deploy the binary to your server. 
 
-> Dockerfile is coming soon
+### Docker deployment
 
+The official docker image is available under `ghcr.io/denyskon/teabag:latest`.
+
+If you want to use docker compose, here is a suggested `docker-compose.yml`file.
+
+```yaml
+version: '2'
+services:
+  teabag:
+    image: ghcr.io/denyskon/teabag
+    restart: always
+    environment:
+      - TEABAG_PORT=3000
+      - TEABAG_SESSION_SECRET=super-secret
+      - TEABAG_GITEA_KEY=<KEY>
+      - TEABAG_GITEA_SECRET=<SECRET>
+      - TEABAG_GITEA_BASE_URL=https://gitea.company.com
+      - TEABAG_GITEA_AUTH_URI=login/oauth/authorize
+      - TEABAG_GITEA_TOKEN_URI=login/oauth/access_token
+      - TEABAG_GITEA_USER_URI=api/v1/user
+      - TEABAG_CALLBACK_URI=http://oauth.example.com:3000/callback
+    ports:
+      - "3000:3000"
+```
 
 ## Config
 
 The service needs some minimal configuration set before it can run. 
 On the server or the location you are running the service, create a config file:
 
-```
+```bash
 mkdir ./env
-touch ./env/config
+touch ./env/teabag.env
+# OR
+mkdir /etc/teabag
+touch /etc/teabag/teabag.env
 ```
 
-The config file is TOML based. You can see a complete example in this repo at `./env/sample.config`
+The config file is based on envfile. You can see a complete example in this repo at `./env/teabag.env.example`
 
-```
-[runtime]
-# Not used anywhere yet, for information only
-environment="development" 
-
-[server]
-# The hostname to serve from; Your external app will connect to the OAuth provider via this URL
-host="localhost" 
-# The port to serve from; Used in conjunction with [server.host] to create a complete URL
-port="3000"
-# Used with OAuth provider sessions
-sessionSecret="super-secret"
+```bash
+HOST=localhost # The hostname to bind to
+PORT=3000 # The port to serve on
+SESSION_SECRET=super-secret # Used with OAuth provider sessions
 ```
 
-For each CMS, there are some required settings:
+For the Gitea connector, there are some required settings:
 
-```
-[gitea]
-# OAuth Key and Secret generated on the SCM site
-key="<KEY>"
-secret="<SECRET>"
-# URL of the SCM instance
-baseUrl="https://gitea.company.com"
-# URI of the authorize endpoint (e.g for Gitea, this is shown when creating the OAuth application)
-authUri="login/oauth/authorize"
-# URI of the access_token endpoint (e.g for Gitea, this is shown when creating the OAuth application)
-accessTokenUri="login/oauth/access_token"
-# URI of the authorize endpoint if overridden (e.g for Gitea, this is shown when creating the OAuth application)
-userUri="api/v1/user"
+```bash
+# OAuth Key and Secret generated on Gitea
+GITEA_KEY=<KEY>
+GITEA_SECRET=<SECRET>
+# URL of the Gitea instance
+GITEA_BASE_URL=https://gitea.company.com
+# endpoint URIs (for Gitea, see https://docs.gitea.io/en-us/oauth2-provider/)
+GITEA_AUTH_URI=login/oauth/authorize
+GITEA_TOKEN_URI=login/oauth/access_token
+GITEA_USER_URI=api/v1/user
 # Callback URL for the SCM, where it will redirect the user after they authorise. This needs to match what was given when creating the OAuth application.
-callbackUri="http://localhost:3000/callback/gitea"
+CALLBACK_URI=http://localhost:3000/callback
 ```
 
+You can also provide the config using environment variables. For that you need to prefix every variable with `TEABAG_`, e. g. `TEABAG_HOST=0.0.0.0`.
 
 ### Credits
 
