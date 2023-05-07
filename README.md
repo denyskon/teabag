@@ -1,4 +1,4 @@
-# Teabag - [Static CMS](https://github.com/StaticJsCMS/static-cms)/[Decap](https://github.com/decaporg/decap-cms) OAuth Provider for Gitea 
+# teabag - [Static CMS](https://github.com/StaticJsCMS/static-cms)/[Decap](https://github.com/decaporg/decap-cms) OAuth provider for Gitea 
 
 This is a lightweight Go server for handling OAuth flows with Gitea.
 
@@ -61,19 +61,19 @@ PORT=3000 # The port to serve on
 SESSION_SECRET=super-secret # Used with OAuth provider sessions
 ```
 
-For the Gitea connector, there are some required settings:
+There are some required settings to connect to Gitea:
 
 ```bash
-# OAuth Key and Secret generated on Gitea
+# OAuth key and Ssecret generated on Gitea
 GITEA_KEY=<KEY>
 GITEA_SECRET=<SECRET>
-# URL of the Gitea instance
-GITEA_BASE_URL=https://gitea.company.com
-# endpoint URIs (for Gitea, see https://docs.gitea.io/en-us/oauth2-provider/)
+# URL of Gitea instance
+GITEA_BASE_URL=https://gitea.example.com
+# endpoint URIs (see https://docs.gitea.com/development/oauth2-provider/)
 GITEA_AUTH_URI=login/oauth/authorize
 GITEA_TOKEN_URI=login/oauth/access_token
 GITEA_USER_URI=api/v1/user
-# Callback URL for the SCM, where it will redirect the user after they authorise. This needs to match what was given when creating the OAuth application.
+# callback URL, where users will be redirected after they authorise. Must contain the public URL of your teabag instance. This needs to match what was given when creating the OAuth application in Gitea.
 CALLBACK_URI=http://localhost:3000/callback
 ```
 
@@ -82,5 +82,3 @@ You can also provide the config using environment variables. For that you need t
 ### Credits
 
 Fork of https://github.com/donskifarrell/scm-oauth-provider
-
-Inspiration taken from https://github.com/igk1972/netlify-cms-oauth-provider-go
