@@ -34,11 +34,13 @@ services:
       - TEABAG_GITEA_BASE_URL=https://gitea.company.com
       - TEABAG_GITEA_AUTH_URI=login/oauth/authorize
       - TEABAG_GITEA_TOKEN_URI=login/oauth/access_token
-      - TEABAG_GITEA_USER_URI=api/v1/user
-      - TEABAG_CALLBACK_URI=http://oauth.example.com:3000/callback
+      - TEABAG_GITEA_USER_URI=login/oauth/userinfo
+      - TEABAG_CALLBACK_URI=https://oauth.example.com/callback
     ports:
       - "3000:3000"
 ```
+
+**It is stronly recommended not to transfer credentials over http. Please use a reverse proxy infront of teabag.**
 
 ## Config
 
@@ -72,7 +74,7 @@ GITEA_BASE_URL=https://gitea.example.com
 # endpoint URIs (see https://docs.gitea.com/development/oauth2-provider/)
 GITEA_AUTH_URI=login/oauth/authorize
 GITEA_TOKEN_URI=login/oauth/access_token
-GITEA_USER_URI=api/v1/user
+GITEA_USER_URI=login/oauth/userinfo
 # callback URL, where users will be redirected after they authorise. Must contain the public URL of your teabag instance. This needs to match what was given when creating the OAuth application in Gitea.
 CALLBACK_URI=http://localhost:3000/callback
 ```
