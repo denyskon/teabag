@@ -1,4 +1,4 @@
-# Teabag - Static CMS OAuth Provider for Gitea 
+# Teabag - [Static CMS](https://github.com/StaticJsCMS/static-cms)/[Decap](https://github.com/decaporg/decap-cms) OAuth Provider for Gitea 
 
 This is a lightweight Go server for handling OAuth flows with Gitea.
 
