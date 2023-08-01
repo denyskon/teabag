@@ -1,3 +1,5 @@
+# ⚠️ As of August 2023, teabag has been deprecated in favour of the newly available PKCE authentication supported by Static CMS 3.0+ in combination with Gitea 1.20+. It won't receive any more updates.
+
 # teabag - [Static CMS](https://github.com/StaticJsCMS/static-cms) OAuth provider for Gitea 
 
 This is a lightweight Go server for handling OAuth flows with Gitea.
